@@ -15,7 +15,7 @@ Este projeto desenvolve, avalia e compara múltiplos modelos de Machine Learning
   3. **Support Vector Machine - SVM** (Kernel RBF - Scikit-Learn)
   4. **Rede Neural MLP - Multi-Layer Perceptron** (Scikit-Learn)
   5. **Rede Neural Convolucional - CNN** (TensorFlow / Keras)
-- Analisar a robustez dos classificadores frente a classes não vistas durante o treino.
+- Analisar a robustez dos classificadores frente a classes não vistas durante o treino e implementar mecanismo de rejeição sob incerteza (**"Não encontrado" / Open-Set Recognition**).
 - Integrar um pipeline de visão computacional em **OpenCV** para pré-processar imagens externas do Paint (detecção de fundo, binarização, enquadramento e alinhamento por centro de massa) e classificá-las em todos os modelos via votação por consenso.
 
 ---
@@ -147,11 +147,20 @@ python main.py
 
 ### Fase 5: Testes de Robustez e Teste Multimodelo no Paint
 
-#### 1. Robustez com Classes Ocultadas no Treino
-Ao treinar sem os dígitos **3** e **8**:
-- O dígito **'3'** foi classificado como **'5'** (64.4%) e **'2'** (23.1%).
-- O dígito **'8'** foi classificado como **'2'** (41.9%), **'5'** (24.6%) e **'9'** (20.1%).
-- *Gráfico Gerado*: `outputs/robustez_classes_ausentes.png`.
+#### 1. Robustez com Classes Ocultadas no Treino e Detecção de "Não Encontrado" (Open-Set Recognition)
+Para avaliar o comportamento sob incerteza e testar a capacidade de lidar com entradas fora de distribuição (OOD), o modelo foi treinado com a remoção intencional dos dígitos **3** e **8**:
+
+* **Comportamento Sem Rejeição (Classificação Forçada - Padrão Fechado):**
+  - O modelo é forçado a escolher uma das 8 classes conhecidas restantes, gerando 100% de erro forçado.
+  - O dígito **'3'** foi redistribuído como **'5'** (64.4%) e **'2'** (23.1%).
+  - O dígito **'8'** foi redistribuído como **'2'** (41.9%), **'5'** (24.6%) e **'9'** (20.1%).
+
+* **Comportamento com a Opção "Não Encontrado" (Open-Set Recognition com Limiar $\ge$ 50%):**
+  - Através da função `prever_com_rejeicao()`, quando a confiança máxima estimada é inferior a 50%, o modelo rejeita a predição e classifica como **"Não encontrado"**.
+  - **Dígito '8'**: **91.7%** das amostras foram identificadas com sucesso como **"Não encontrado"** (confiança média de apenas 34.0%).
+  - **Dígito '3'**: **59.7%** das amostras foram identificadas com sucesso como **"Não encontrado"** (confiança média de 47.9%).
+  - **Controle em Dígitos Conhecidos**: Apenas **5.3%** das amostras de números válidos foram rejeitadas indevidamente, demonstrando alta especificidade.
+  - *Gráfico Comparativo Gerado*: `outputs/robustez_classes_ausentes.png` (apresenta o painel comparativo superior [Forçado] vs inferior [Com Rejeição]).
 
 #### 2. Pipeline OpenCV e Teste de Todas as Imagens do Paint nos 5 Modelos
 O pipeline OpenCV implementado em `src/robustness.py`:
@@ -186,6 +195,7 @@ O pipeline OpenCV implementado em `src/robustness.py`:
 1. **Modelo Selecionado para Máxima Precisão**: **Rede Neural Convolucional (Keras)** com **98.97% de acurácia** no teste e alta robustez no processamento de imagens reais do Paint.
 2. **Modelo Selecionado para Máxima Eficiência**: **Rede Neural MLP (Scikit-Learn)** com **97.47% de acurácia** e latência ultrarrápida de **0.004 ms por imagem**.
 3. **Poder do Comitê de Modelos (Ensemble)**: A votação de consenso entre os 5 modelos garantiu a correção de casos atípicos ou ruidosos, atingindo unanimidade em 5 das 12 amostras manuscritas externas.
+4. **Detecção Fora de Distribuição (Open-Set Recognition)**: A inclusão do mecanismo de rejeição (`prever_com_rejeicao`) com limiar de confiança de 50% evitou predições forçadas e incorretas, identificando **91.7%** dos 8s e **59.7%** dos 3s ausentes como **"Não encontrado"**, com apenas 5.3% de rejeição em dígitos conhecidos.
 
 Entrega Prevista: Outubro/2026
 Autor: Carlos Joao Reinert

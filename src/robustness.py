@@ -29,22 +29,57 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 import keras
 
 
+def prever_com_rejeicao(modelo, X, limiar_confianca=0.50, rotulo_rejeicao="Não encontrado"):
+    """Realiza predição com opção de rejeição / Open-Set Recognition.
+
+    Se a maior probabilidade estimada pelo modelo for menor que o limiar especificado,
+    a amostra é classificada com o rótulo de rejeição (ex: 'Não encontrado')
+    em vez de ser forçada a uma classe conhecida.
+
+    Args:
+        modelo: Modelo treinado com o método predict_proba.
+        X (np.ndarray): Matriz de características das amostras.
+        limiar_confianca (float): Confiança mínima (0.0 a 1.0) para aceitar a predição.
+        rotulo_rejeicao (str): Rótulo atribuído quando a confiança é menor que o limiar.
+
+    Returns:
+        tuple: (predicoes_com_rejeicao, confiancas_maximas)
+    """
+    probs = modelo.predict_proba(X)
+    classes = modelo.classes_
+    max_probs = np.max(probs, axis=1)
+    best_indices = np.argmax(probs, axis=1)
+    preds_classes = classes[best_indices].astype(str)
+
+    predicoes = np.where(max_probs >= limiar_confianca, preds_classes, rotulo_rejeicao)
+    return predicoes, max_probs
+
+
 def testar_classes_ausentes(
-    X_train, y_train, X_test, y_test, digitos_ausentes=(3, 8), caminho_saida="outputs/robustez_classes_ausentes.png"
+    X_train,
+    y_train,
+    X_test,
+    y_test,
+    digitos_ausentes=(3, 8),
+    limiar_confianca=0.50,
+    caminho_saida="outputs/robustez_classes_ausentes.png",
 ):
-    """Treina um modelo omitindo classes específicas para avaliar o comportamento sob incerteza.
+    """Treina um modelo omitindo classes específicas para avaliar o comportamento sob incerteza
+    e a eficácia da opção 'Não encontrado' (Open-Set Recognition por limiar de confiança).
 
     Args:
         X_train, y_train: Conjunto de treino completo.
         X_test, y_test: Conjunto de teste completo.
         digitos_ausentes (tuple): Dígitos que serão removidos do treino.
-        caminho_saida (str): Onde salvar o gráfico de confusão das classes ausentes.
+        limiar_confianca (float): Confiança mínima requerida para não rejeitar a amostra.
+        caminho_saida (str): Onde salvar o gráfico comparativo das classes ausentes.
 
     Returns:
-        dict: Estatísticas de classificação para cada dígito ausente.
+        dict: Estatísticas de classificação (com e sem opção 'Não encontrado') para cada dígito ausente.
     """
     print("\n" + "=" * 65)
     print("5.1 TESTE DE ROBUSTEZ: DÍGITOS AUSENTES NO TREINAMENTO")
+    print(f"    (COM OPÇÃO DE REJEIÇÃO: 'NÃO ENCONTRADO' | LIMIAR >= {limiar_confianca*100:.0f}%)")
     print("=" * 65)
     print(f"Omitindo os dígitos {digitos_ausentes} do conjunto de treino...")
 
@@ -59,44 +94,128 @@ def testar_classes_ausentes(
     modelo_incompleto = RandomForestClassifier(n_estimators=60, random_state=42, n_jobs=-1)
     modelo_incompleto.fit(X_train_filtrado, y_train_filtrado)
 
-    fig, axes = plt.subplots(1, len(digitos_ausentes), figsize=(6 * len(digitos_ausentes), 4.5))
-    if len(digitos_ausentes) == 1:
-        axes = [axes]
+    # Gráfico com 2 linhas: Linha 1 = Sem Rejeição (Forçado) | Linha 2 = Com Opção 'Não encontrado'
+    qtd_ausentes = len(digitos_ausentes)
+    fig, axes = plt.subplots(2, qtd_ausentes, figsize=(6.5 * qtd_ausentes, 8.5))
+    if qtd_ausentes == 1:
+        axes = np.array([[axes[0]], [axes[1]]])
 
     resultados_ausentes = {}
 
-    for ax, digito in zip(axes, digitos_ausentes):
+    for col, digito in enumerate(digitos_ausentes):
         mascara_teste = (y_test == digito)
         X_amostras = X_test[mascara_teste]
         total_amostras = len(X_amostras)
 
-        preds = modelo_incompleto.predict(X_amostras)
-        classes_preditas, contagens = np.unique(preds, return_counts=True)
-        percentuais = (contagens / total_amostras) * 100
+        # 1. Comportamento Clássico (Sem Rejeição - Forçado a escolher entre as classes remanescentes)
+        preds_forcadas = modelo_incompleto.predict(X_amostras)
+        classes_f, contagens_f = np.unique(preds_forcadas, return_counts=True)
+        pct_f = (contagens_f / total_amostras) * 100
 
-        resultados_ausentes[digito] = dict(zip(classes_preditas, percentuais))
+        # 2. Comportamento com Opção 'Não encontrado' (Limiar de Confiança)
+        preds_rejeicao, max_probs = prever_com_rejeicao(
+            modelo_incompleto, X_amostras, limiar_confianca=limiar_confianca, rotulo_rejeicao="Não encontrado"
+        )
+        classes_r, contagens_r = np.unique(preds_rejeicao, return_counts=True)
+        pct_r = (contagens_r / total_amostras) * 100
 
-        print(f"\nComportamento para o Dígito Desconhecido '{digito}' ({total_amostras} amostras testadas):")
-        for cls, pct in sorted(zip(classes_preditas, percentuais), key=lambda x: x[1], reverse=True)[:3]:
-            print(f"  -> Confundido com '{cls}': {pct:.1f}% das vezes")
+        # Taxa de detecção como 'Não encontrado'
+        taxa_detectado = float(np.mean(preds_rejeicao == "Não encontrado") * 100)
+        conf_media = float(np.mean(max_probs) * 100)
 
-        ax.bar(classes_preditas.astype(str), percentuais, color="#c53030", edgecolor="#742a2a", alpha=0.85)
-        ax.set_title(f"Dígito '{digito}' (NÃO treinado) previsto como:", fontsize=11, fontweight="bold")
-        ax.set_xlabel("Classe Prevista", fontsize=10)
-        ax.set_ylabel("Frequência (%)", fontsize=10)
-        ax.set_ylim(0, max(percentuais) * 1.15)
-        ax.grid(axis="y", linestyle="--", alpha=0.5)
+        resultados_ausentes[digito] = {
+            "total_amostras": total_amostras,
+            "confianca_media": conf_media,
+            "taxa_nao_encontrado": taxa_detectado,
+            "distribuicao_forcada": dict(zip(classes_f, pct_f)),
+            "distribuicao_com_rejeicao": dict(zip(classes_r, pct_r)),
+        }
 
-        for barra, pct in zip(ax.patches, percentuais):
-            ax.annotate(f"{pct:.1f}%", (barra.get_x() + barra.get_width() / 2, barra.get_height()),
-                        textcoords="offset points", xytext=(0, 3), ha="center", fontsize=9)
+        print(f"\n" + "-" * 60)
+        print(f"Comportamento para o Digito Desconhecido '{digito}' ({total_amostras} amostras testadas):")
+        print(f"  - Confianca media atribuida pelo modelo: {conf_media:.1f}%")
+        print(f"  - SEM REJEICAO (Forcado): 100% de erros distribuidos em outras classes")
+        for cls, pct in sorted(zip(classes_f, pct_f), key=lambda x: x[1], reverse=True)[:3]:
+            print(f"      * Confundido com '{cls}': {pct:.1f}%")
+        print(f"  - COM REJEICAO (Limiar >= {limiar_confianca*100:.0f}%):")
+        print(f"      [OK] Detectado como 'Nao encontrado': {taxa_detectado:.1f}% das vezes!")
 
-    fig.suptitle("Robustez: Redistribuição de Classes Ausentes no Treino", fontsize=13, fontweight="bold", y=1.02)
+        # --- SUBPLOT SUPERIOR: SEM REJEIÇÃO (CLASSIFICAÇÃO FORÇADA) ---
+        ax_top = axes[0, col]
+        barras_f = ax_top.bar(classes_f.astype(str), pct_f, color="#c53030", edgecolor="#742a2a", alpha=0.85)
+        ax_top.set_title(
+            f"Dígito '{digito}' (NÃO treinado)\nSem Rejeição: Predição Forçada (100% Erro)",
+            fontsize=10.5,
+            fontweight="bold",
+            color="#742a2a",
+        )
+        ax_top.set_xlabel("Classe Prevista", fontsize=9.5)
+        ax_top.set_ylabel("Frequência (%)", fontsize=9.5)
+        ax_top.set_ylim(0, max(pct_f) * 1.25)
+        ax_top.grid(axis="y", linestyle="--", alpha=0.5)
+
+        for barra, pct in zip(barras_f, pct_f):
+            ax_top.annotate(
+                f"{pct:.1f}%",
+                (barra.get_x() + barra.get_width() / 2, barra.get_height()),
+                textcoords="offset points",
+                xytext=(0, 3),
+                ha="center",
+                fontsize=8.5,
+            )
+
+        # --- SUBPLOT INFERIOR: COM OPÇÃO 'NÃO ENCONTRADO' ---
+        ax_bot = axes[1, col]
+        # Ordena para colocar 'Não encontrado' primeiro ou em destaque
+        ordem_indices = np.argsort(-pct_r)
+        classes_r_ord = classes_r[ordem_indices]
+        pct_r_ord = pct_r[ordem_indices]
+
+        cores_r = ["#2b6cb0" if c == "Não encontrado" else "#e28743" for c in classes_r_ord]
+        barras_r = ax_bot.bar(classes_r_ord.astype(str), pct_r_ord, color=cores_r, edgecolor="#2d3748", alpha=0.88)
+        ax_bot.set_title(
+            f"Dígito '{digito}' com Opção 'Não encontrado' (Limiar >= {limiar_confianca*100:.0f}%)\n"
+            f"Taxa de 'Não encontrado': {taxa_detectado:.1f}%",
+            fontsize=10.5,
+            fontweight="bold",
+            color="#2b6cb0",
+        )
+        ax_bot.set_xlabel("Resultado da Avaliação", fontsize=9.5)
+        ax_bot.set_ylabel("Frequência (%)", fontsize=9.5)
+        ax_bot.set_ylim(0, max(pct_r_ord) * 1.25)
+        ax_bot.grid(axis="y", linestyle="--", alpha=0.5)
+        plt.setp(ax_bot.get_xticklabels(), rotation=15, ha="right", fontsize=8.5)
+
+        for barra, pct in zip(barras_r, pct_r_ord):
+            ax_bot.annotate(
+                f"{pct:.1f}%",
+                (barra.get_x() + barra.get_width() / 2, barra.get_height()),
+                textcoords="offset points",
+                xytext=(0, 3),
+                ha="center",
+                fontsize=8.5,
+            )
+
+    # Avaliação de controle nos dígitos conhecidos (taxa de falso positivo da rejeição)
+    mascara_conhecidos = np.isin(y_test, np.unique(y_train_filtrado))
+    preds_conhecidos, _ = prever_com_rejeicao(
+        modelo_incompleto, X_test[mascara_conhecidos], limiar_confianca=limiar_confianca, rotulo_rejeicao="Não encontrado"
+    )
+    taxa_rejeicao_conhecidos = float(np.mean(preds_conhecidos == "Não encontrado") * 100)
+    print(f"\nControle em Dígitos Conhecidos: Apenas {taxa_rejeicao_conhecidos:.1f}% foram rejeitados indevidamente.")
+    print("=" * 65)
+
+    fig.suptitle(
+        "Robustez: Efeito da Opção 'Não encontrado' vs Predição Forçada sob Incerteza",
+        fontsize=13,
+        fontweight="bold",
+        y=0.995,
+    )
     plt.tight_layout()
     os.makedirs(os.path.dirname(caminho_saida), exist_ok=True)
     plt.savefig(caminho_saida, dpi=180, bbox_inches="tight")
     plt.close(fig)
-    print(f"\n-> Gráfico de classes ausentes salvo em: '{caminho_saida}'")
+    print(f"-> Gráfico comparativo de classes ausentes salvo em: '{caminho_saida}'")
 
     return resultados_ausentes
 
@@ -525,6 +644,8 @@ def executar_fase_robustez_completa(dados_preparados, diretorio_saida="outputs",
 
 
 if __name__ == "__main__":
+    import sys
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
     from src.eda import carregar_dados
     from src.preprocessing import executar_preparacao_dados
 
