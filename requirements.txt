@@ -1,4 +1,4 @@
-﻿absl-py==2.5.0
+absl-py==2.5.0
 asttokens==3.0.2
 astunparse==1.6.3
 botcity-framework-base==0.4.4
@@ -79,3 +79,9 @@ urllib3==2.8.0
 wcwidth==0.8.4
 wheel==0.48.0
 wrapt==2.4.1
+fastapi>=0.115.0
+pydantic>=2.9.0
+uvicorn>=0.30.0
+httpx2>=2.13.0
+reportlab>=4.0.0
+streamlit-drawable-canvas>=0.13.0

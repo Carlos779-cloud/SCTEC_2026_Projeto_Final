@@ -220,11 +220,13 @@ def testar_classes_ausentes(
     return resultados_ausentes
 
 
-def processar_imagem_externa_opencv(caminho_imagem):
+def processar_imagem_externa_opencv(caminho_ou_array):
     """Pipeline OpenCV completo para converter imagem externa para o formato MNIST 28x28.
 
+    Aceita tanto um caminho de arquivo no disco (str) quanto um array numpy (H, W, 3 ou 4).
+
     Etapas:
-    1. Leitura em tons de cinza.
+    1. Leitura ou conversão em tons de cinza.
     2. Detecção automática da cor de fundo pelas bordas.
     3. Diferença e binarização adaptativa (Otsu) -> fundo preto, traço branco.
     4. Localização do contorno delimitador (bounding box) do dígito.
@@ -235,12 +237,26 @@ def processar_imagem_externa_opencv(caminho_imagem):
     Returns:
         tuple: (canvas_28x28_float32, img_original_rgb, img_binarizada)
     """
-    img_bgr = cv2.imread(caminho_imagem)
-    if img_bgr is None:
-        raise FileNotFoundError(f"Não foi possível ler a imagem: {caminho_imagem}")
-
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+    if isinstance(caminho_ou_array, str):
+        img_bgr = cv2.imread(caminho_ou_array)
+        if img_bgr is None:
+            raise FileNotFoundError(f"Não foi possível ler a imagem: {caminho_ou_array}")
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+    elif isinstance(caminho_ou_array, np.ndarray):
+        arr = caminho_ou_array.astype(np.uint8)
+        if arr.ndim == 2:
+            gray = arr
+            img_rgb = cv2.cvtColor(arr, cv2.COLOR_GRAY2RGB)
+        elif arr.shape[2] == 4:
+            # Se for RGBA do canvas (fundo preto ou transparente)
+            img_rgb = cv2.cvtColor(arr, cv2.COLOR_RGBA2RGB)
+            gray = cv2.cvtColor(arr, cv2.COLOR_RGBA2GRAY)
+        else:
+            img_rgb = arr
+            gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
+    else:
+        raise ValueError("Entrada deve ser um caminho de arquivo (str) ou um array numpy.")
 
     # 1. Identifica cor de fundo pelas bordas (mediana)
     bordas = np.concatenate([gray[0, :], gray[-1, :], gray[:, 0], gray[:, -1]])
