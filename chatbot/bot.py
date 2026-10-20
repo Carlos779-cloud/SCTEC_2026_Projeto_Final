@@ -86,7 +86,7 @@ class ChatbotLocal:
                     "Principais Endpoints:\n"
                     "- `GET /health`: Estado do serviço, modelos ativos e conexão SQLite.\n"
                     "- `GET /models`: Lista dos 5 modelos e descrições técnicas.\n"
-                    "- `GET /metrics`: Métricas de acurácia, F1-macro e latência de cada modelo.\n"
+                    "- `GET /metrics`: Métricas de acurácia, F1 ponderado e latência de cada modelo.\n"
                     "- `POST /predict`: Recebe vetor de 784 pixels e retorna predições dos 5 modelos com probabilidades percentuais (0-9).\n"
                     "- `GET /samples/{digit}`: Retorna uma imagem real do conjunto MNIST persistida no SQLite."
                 ),
@@ -133,7 +133,7 @@ class ChatbotLocal:
                 "gatilhos": ["paint", "opencv", "classes ausentes", "rejeicao", "nao encontrado", "open set", "externa"],
                 "resposta": (
                     "**Robustez e Imagens do Paint:**\n"
-                    "- **Open-Set Recognition:** Quando classes são omitidas no treino (ex: 3 e 8), o modelo utiliza um limiar de confiança (50%). Amostras com certeza inferior são classificadas como **'Não encontrado'**, evitando erros forçados.\n"
+                    "- **Experimento Open-Set:** a etapa de robustez testa rejeição abaixo de 50% com um Random Forest treinado sem algumas classes. Esse mecanismo não faz parte das predições normais da API ou do Streamlit.\n"
                     "- **Pipeline OpenCV:** As imagens feitas no Paint são normalizadas por: detecção de fundo, binarização Otsu, enquadramento proporcional 20×20 e centralização por Centro de Massa na tela 28×28."
                 ),
             },

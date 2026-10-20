@@ -7,6 +7,7 @@ import unicodedata
 
 import cv2
 import keras
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -14,7 +15,12 @@ from PIL import Image, ImageOps
 from streamlit_drawable_canvas import st_canvas
 
 from chatbot.bot import ChatbotLocal
-from src.database import obter_contagem_por_classe, obter_exemplo_por_digito, verificar_integridade_banco
+from src.database import (
+    get_connection,
+    obter_contagem_por_classe,
+    obter_exemplo_por_digito,
+    verificar_integridade_banco,
+)
 from src.inference import MotorInferencia
 
 
@@ -323,7 +329,7 @@ def pagina_visao_geral() -> None:
     st.subheader("Modelos disponíveis")
     st.dataframe(
         pd.DataFrame([
-            {"Modelo": nome, "Acurácia (%)": dados["acuracia"], "F1 macro (%)": dados["f1_macro"], "Latência (ms)": dados["latencia_ms"]}
+            {"Modelo": nome, "Acurácia (%)": dados["acuracia"], "F1 ponderado (%)": dados["f1_ponderado"], "Latência (ms)": dados["latencia_ms"]}
             for nome, dados in ranking
         ]),
         hide_index=True,
@@ -338,9 +344,9 @@ def pagina_comparacao() -> None:
         {
             "Modelo": nome,
             "Acurácia (%)": dados["acuracia"],
-            "Precisão macro (%)": dados["precisao_macro"],
-            "Recall macro (%)": dados["recall_macro"],
-            "F1 macro (%)": dados["f1_macro"],
+            "Precisão ponderada (%)": dados["precisao_ponderada"],
+            "Recall ponderado (%)": dados["recall_ponderado"],
+            "F1 ponderado (%)": dados["f1_ponderado"],
             "Latência (ms)": dados["latencia_ms"],
             "Treino (s)": dados["tempo_treino_s"],
         }
@@ -349,7 +355,7 @@ def pagina_comparacao() -> None:
     st.write("Compare as métricas registradas para os cinco modelos.")
     metrica = st.selectbox(
         "Métrica do gráfico",
-        ["Acurácia (%)", "Precisão macro (%)", "Recall macro (%)", "F1 macro (%)", "Latência (ms)"],
+        ["Acurácia (%)", "Precisão ponderada (%)", "Recall ponderado (%)", "F1 ponderado (%)", "Latência (ms)"],
         key="metrica_comparacao",
     )
     st.bar_chart(df, x="Modelo", y=metrica, sort=False, alt=f"Comparação dos modelos por {metrica}")
@@ -482,7 +488,67 @@ def pagina_dados() -> None:
     st.caption(f"Arquivo do banco: `{integridade['db_path']}`")
     st.subheader("Amostras por dígito e divisão")
     st.dataframe(obter_contagem_por_classe(), hide_index=True, width="stretch", alt="Contagem de imagens por dígito e divisão MNIST")
+    st.subheader("Desempenho por setor comercial")
+    st.write(
+        "M\u00e9dias de Valor A (vendas) e Valor B (frete), calculadas a partir dos "
+        "registros da tabela `registros_demo`. Esses registros s\u00e3o sint\u00e9ticos e "
+        "servem para demonstrar consultas e visualiza\u00e7\u00f5es no banco SQLite."
+    )
+    analise_setor = carregar_medias_por_setor()
+    if analise_setor.empty:
+        st.info("Ainda n\u00e3o h\u00e1 registros de demonstra\u00e7\u00e3o para montar o gr\u00e1fico.")
+    else:
+        figura, eixo = plt.subplots(figsize=(10, 5.5), constrained_layout=True)
+        posicoes = np.arange(len(analise_setor))
+        largura = 0.36
+        barras_a = eixo.bar(
+            posicoes - largura / 2,
+            analise_setor["Media_Valor_A"],
+            width=largura,
+            label="M\u00e9dia Valor A (Vendas)",
+            color="#1f77b4",
+        )
+        barras_b = eixo.bar(
+            posicoes + largura / 2,
+            analise_setor["Media_Valor_B"],
+            width=largura,
+            label="M\u00e9dia Valor B (Frete)",
+            color="#ff7f0e",
+        )
+        eixo.set_xlabel("Setores da Regi\u00e3o")
+        eixo.set_ylabel("Valores m\u00e9dios (R$)")
+        eixo.set_title("An\u00e1lise de Desempenho por Setor Comercial", fontweight="bold")
+        eixo.set_xticks(posicoes, analise_setor["setor"])
+        eixo.yaxis.set_major_formatter(
+            plt.FuncFormatter(lambda valor, _: f"R$ {valor:,.0f}".replace(",", "."))
+        )
+        eixo.grid(axis="y", linestyle="--", alpha=0.35)
+        eixo.set_axisbelow(True)
+        eixo.legend(frameon=False, ncols=2, loc="upper right")
+        eixo.bar_label(barras_a, fmt="R$ %.0f", padding=3, fontsize=8)
+        eixo.bar_label(barras_b, fmt="R$ %.0f", padding=3, fontsize=8)
+        st.pyplot(figura, width="stretch")
+        plt.close(figura)
     st.info("Para inspecionar tabelas e executar consultas, abra `data/mnist.db` no DBeaver. Exemplos estão em `data/queries_dbeaver.sql`.")
+
+
+@st.cache_data(ttl=300)
+def carregar_medias_por_setor() -> pd.DataFrame:
+    conexao = get_connection()
+    try:
+        return pd.read_sql_query(
+            """
+            SELECT setor,
+                   AVG(valor_a) AS Media_Valor_A,
+                   AVG(valor_b) AS Media_Valor_B
+            FROM registros_demo
+            GROUP BY setor
+            ORDER BY setor;
+            """,
+            conexao,
+        )
+    finally:
+        conexao.close()
 
 
 def pagina_fase(titulo: str, caminho: str) -> None:

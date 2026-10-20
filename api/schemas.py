@@ -1,7 +1,8 @@
 """Esquemas Pydantic para validação e documentação dos endpoints da API FastAPI."""
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Dict, List, Optional, Any
+import math
+from pydantic import BaseModel, Field, StrictFloat, StrictInt, field_validator
+from typing import Dict, List, Any
 
 
 class HealthResponse(BaseModel):
@@ -10,6 +11,7 @@ class HealthResponse(BaseModel):
     banco_sqlite: Dict[str, Any]
     modelos_carregados: List[str]
     total_modelos: int
+    modelo_disponivel: bool
 
 
 class ModelInfo(BaseModel):
@@ -27,9 +29,9 @@ class ModelsResponse(BaseModel):
 
 class MetricDetail(BaseModel):
     acuracia: float
-    precisao_macro: float
-    recall_macro: float
-    f1_macro: float
+    precisao_ponderada: float
+    recall_ponderado: float
+    f1_ponderado: float
     tempo_treino_s: float
     latencia_ms: float
     amostras_teste: int
@@ -42,16 +44,21 @@ class MetricsResponse(BaseModel):
 
 
 class PredictRequest(BaseModel):
-    pixels: List[float] = Field(
+    pixels: List[StrictFloat | StrictInt] = Field(
         ...,
+        min_length=784,
+        max_length=784,
+        examples=[[0] * 784],
         description="Lista contendo exatamente 784 valores numéricos (pixels) no intervalo [0.0, 1.0] ou [0, 255].",
     )
 
     @field_validator("pixels")
     @classmethod
-    def validar_quantidade_pixels(cls, v):
-        if len(v) != 784:
-            raise ValueError(f"O vetor de pixels deve conter exatamente 784 elementos. Recebido: {len(v)}.")
+    def validar_pixels(cls, v):
+        if any(not math.isfinite(pixel) for pixel in v):
+            raise ValueError("Os pixels devem ser valores numéricos finitos.")
+        if any(pixel < 0 or pixel > 255 for pixel in v):
+            raise ValueError("Os pixels devem estar entre 0 e 255.")
         return v
 
 

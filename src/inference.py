@@ -86,15 +86,16 @@ class MotorInferencia:
             f"{len(self.modelos)}/5"
         )
 
-    def _carregar_metricas_estaticas(self):
+    @staticmethod
+    def _carregar_metricas_estaticas():
         """Métricas de avaliação previamente registradas."""
 
         return {
             "Rede Neural Keras": {
                 "acuracia": 98.97,
-                "precisao_macro": 98.98,
-                "recall_macro": 98.97,
-                "f1_macro": 98.97,
+                "precisao_ponderada": 98.98,
+                "recall_ponderado": 98.97,
+                "f1_ponderado": 98.97,
                 "tempo_treino_s": 94.25,
                 "latencia_ms": 0.124,
                 "amostras_teste": 10500,
@@ -105,9 +106,9 @@ class MotorInferencia:
             },
             "Rede Neural MLP": {
                 "acuracia": 97.47,
-                "precisao_macro": 97.47,
-                "recall_macro": 97.47,
-                "f1_macro": 97.47,
+                "precisao_ponderada": 97.47,
+                "recall_ponderado": 97.47,
+                "f1_ponderado": 97.47,
                 "tempo_treino_s": 24.64,
                 "latencia_ms": 0.004,
                 "amostras_teste": 10500,
@@ -118,9 +119,9 @@ class MotorInferencia:
             },
             "SVM": {
                 "acuracia": 97.26,
-                "precisao_macro": 97.26,
-                "recall_macro": 97.26,
-                "f1_macro": 97.25,
+                "precisao_ponderada": 97.26,
+                "recall_ponderado": 97.26,
+                "f1_ponderado": 97.25,
                 "tempo_treino_s": 43.39,
                 "latencia_ms": 4.255,
                 "amostras_teste": 10500,
@@ -128,9 +129,9 @@ class MotorInferencia:
             },
             "KNN": {
                 "acuracia": 97.12,
-                "precisao_macro": 97.15,
-                "recall_macro": 97.12,
-                "f1_macro": 97.12,
+                "precisao_ponderada": 97.15,
+                "recall_ponderado": 97.12,
+                "f1_ponderado": 97.12,
                 "tempo_treino_s": 0.03,
                 "latencia_ms": 1.155,
                 "amostras_teste": 10500,
@@ -138,9 +139,9 @@ class MotorInferencia:
             },
             "Random Forest": {
                 "acuracia": 96.63,
-                "precisao_macro": 96.63,
-                "recall_macro": 96.63,
-                "f1_macro": 96.63,
+                "precisao_ponderada": 96.63,
+                "recall_ponderado": 96.63,
+                "f1_ponderado": 96.63,
                 "tempo_treino_s": 13.68,
                 "latencia_ms": 0.031,
                 "amostras_teste": 10500,
