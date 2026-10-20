@@ -161,7 +161,7 @@ def plotar_comparativo_modelos(df_resumo, caminho_saida="outputs/comparativo_mod
     for i in x:
         ax1.annotate(f"{df_resumo['Acurácia (%)'][i]:.2f}%", (i - largura/2, df_resumo['Acurácia (%)'][i]),
                      textcoords="offset points", xytext=(0, 3), ha="center", fontsize=8)
-        ax1.annotate(f"{df_resumo['F1-Score (%)'][i]:.2f}%", (i + largura/2, df_resumo['F1-Score (%)'][i]),
+        ax1.annotate(f"{df_resumo['F1-Score ponderado (%)'][i]:.2f}%", (i + largura/2, df_resumo['F1-Score ponderado (%)'][i]),
                      textcoords="offset points", xytext=(0, 3), ha="center", fontsize=8)
 
     # Subplot 2: Latência de Inferência (ms por imagem)
