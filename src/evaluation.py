@@ -2,7 +2,7 @@
 
 Responsável por:
 - Testar os modelos no conjunto de teste independente (10.500 imagens).
-- Calcular métricas: Acurácia, Precisão, Recall, F1-score (macro e ponderado).
+- Calcular métricas: Acurácia, Precisão, Recall, F1-score com m?dia ponderada.
 - Medir tempo de inferência e latência média por amostra.
 - Gerar matrizes de confusão individuais e comparativas.
 - Gerar gráfico de barras comparando desempenho e custo computacional.
@@ -88,9 +88,9 @@ def avaliar_modelo(nome, info_modelo, X_test, y_test):
     latencia_ms = (tempo_inferencia / len(y_test)) * 1000.0
 
     print(f"-> Acurácia : {acuracia * 100:.2f}%")
-    print(f"-> F1-Score : {f1 * 100:.2f}%")
-    print(f"-> Precisão : {precisao * 100:.2f}%")
-    print(f"-> Recall   : {recall * 100:.2f}%")
+    print(f"-> F1-Score ponderado : {f1 * 100:.2f}%")
+    print(f"-> Precisão ponderada : {precisao * 100:.2f}%")
+    print(f"-> Recall ponderado   : {recall * 100:.2f}%")
     print(f"-> Tempo total de teste : {tempo_inferencia:.2f}s ({latencia_ms:.3f} ms/imagem)")
 
     return {
@@ -149,7 +149,7 @@ def plotar_comparativo_modelos(df_resumo, caminho_saida="outputs/comparativo_mod
 
     # Subplot 1: Métricas Preditivas (Acurácia e F1-Score)
     ax1.bar(x - largura/2, df_resumo["Acurácia (%)"], largura, label="Acurácia (%)", color="#2b5c8f", alpha=0.9)
-    ax1.bar(x + largura/2, df_resumo["F1-Score (%)"], largura, label="F1-Score (%)", color="#38a169", alpha=0.9)
+    ax1.bar(x + largura/2, df_resumo["F1-Score ponderado (%)"], largura, label="F1-Score ponderado (%)", color="#38a169", alpha=0.9)
     ax1.set_title("Desempenho Preditivo no Teste", fontsize=12, fontweight="bold")
     ax1.set_xticks(x)
     ax1.set_xticklabels(nomes, rotation=15, ha="right", fontsize=9)
@@ -227,15 +227,15 @@ def executar_avaliacao_completa(dados_preparados, diretorio_modelos="models", di
         linhas_tabela.append({
             "Modelo": nome,
             "Acurácia (%)": round(res["acuracia"] * 100, 2),
-            "Precisão (%)": round(res["precisao"] * 100, 2),
-            "Recall (%)": round(res["recall"] * 100, 2),
-            "F1-Score (%)": round(res["f1_score"] * 100, 2),
+            "Precisão ponderada (%)": round(res["precisao"] * 100, 2),
+            "Recall ponderado (%)": round(res["recall"] * 100, 2),
+            "F1-Score ponderado (%)": round(res["f1_score"] * 100, 2),
             "Tempo Treino (s)": round(tempo_treino_s, 2),
             "Tempo Teste (s)": round(res["tempo_inferencia_s"], 2),
             "Latência (ms/img)": round(res["latencia_ms"], 3),
         })
 
-    df_resumo = pd.DataFrame(linhas_tabela).sort_values(by="F1-Score (%)", ascending=False).reset_index(drop=True)
+    df_resumo = pd.DataFrame(linhas_tabela).sort_values(by="F1-Score ponderado (%)", ascending=False).reset_index(drop=True)
 
     print("\n" + "=" * 75)
     print(" QUADRO COMPARATIVO GERAL DE DESEMPENHO (ORDENADO POR F1-SCORE)")

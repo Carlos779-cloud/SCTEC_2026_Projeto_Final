@@ -16,10 +16,17 @@ class TestFastAPI(unittest.TestCase):
         try:
             from fastapi.testclient import TestClient
             cls.client = TestClient(app)
+            # TestClient só executa o lifespan ao ser usado como context manager.
+            cls.client.__enter__()
             cls.modo_cliente = "testclient"
         except Exception:
             cls.client = None
             cls.modo_cliente = "direto"
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.client is not None:
+            cls.client.__exit__(None, None, None)
 
     def test_health(self):
         if self.modo_cliente == "testclient":
@@ -111,6 +118,43 @@ class TestFastAPI(unittest.TestCase):
         else:
             with self.assertRaises((ValueError, ValidationError)):
                 PredictRequest(pixels=[0.0] * 100)
+
+    def test_predict_rejeita_corpos_invalidos(self):
+        if self.modo_cliente != "testclient":
+            self.skipTest("Validação HTTP requer FastAPI TestClient.")
+
+        casos = [
+            {},
+            {"pixels": [0.0] * 783},
+            {"pixels": [0.0] * 784 + [0.0]},
+            {"pixels": ["pixel"] * 784},
+            {"pixels": [256] + [0] * 783},
+            {"pixels": []},
+        ]
+        for corpo in casos:
+            with self.subTest(corpo=str(corpo)[:40]):
+                resp = self.client.post("/predict", json=corpo)
+                self.assertEqual(resp.status_code, 422)
+
+    def test_openapi_publica_schemas(self):
+        if self.modo_cliente != "testclient":
+            self.skipTest("OpenAPI requer FastAPI TestClient.")
+        docs_resp = self.client.get("/docs")
+        self.assertEqual(docs_resp.status_code, 200)
+        resp = self.client.get("/openapi.json")
+        self.assertEqual(resp.status_code, 200)
+        schema = resp.json()
+        self.assertIn("PredictRequest", schema["components"]["schemas"])
+        self.assertIn("/predict", schema["paths"])
+
+    def test_motor_permanece_carregado_entre_requisicoes(self):
+        if self.modo_cliente != "testclient":
+            self.skipTest("Verificação do lifespan requer FastAPI TestClient.")
+        motor_inicial = app.state.motor
+        self.assertIsNotNone(motor_inicial)
+        self.client.get("/models")
+        self.client.get("/health")
+        self.assertIs(app.state.motor, motor_inicial)
 
 
 if __name__ == "__main__":

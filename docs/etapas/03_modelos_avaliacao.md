@@ -1,4 +1,4 @@
-# Fase 3 — Modelagem, Avaliação e Probabilidades Calibradas
+# Fase 3 — Modelagem, Avaliação e Saídas dos Modelos
 
 **Projeto:** Classificação de Dígitos Manuscritos com Machine Learning  
 **Evento:** SCTEC 2026 — Projeto Final  
@@ -21,7 +21,7 @@ O projeto avalia cinco famílias algorítmicas de aprendizado de máquina superv
 3. **Support Vector Machine - SVM (Scikit-Learn):**
    - Estrutura: Hiperplanos de margem máxima com Kernel de Base Radial (RBF).
    - Hiperparâmetros: $C=5.0$, `kernel='rbf'`, `gamma='scale'`.
-   - Calibração probabilística: Mapeamento via Softmax sobre a função de distância da margem (`decision_function`), garantindo $\sum_{i=0}^9 P(i) = 1.0$ e comparabilidade rigorosa.
+   - Normalização heurística: Softmax sobre os escores da margem (`decision_function`). A saída soma 1, mas não é probabilidade calibrada nem diretamente comparável à confiança dos demais modelos.
 4. **Rede Neural MLP - Multi-Layer Perceptron (Scikit-Learn):**
    - Arquitetura: 2 camadas ocultas densas $(128, 64)$ neurônios com ativação ReLU.
    - Otimizador: Adam com taxa de aprendizado inicial $10^{-3}$, `batch_size=128`, `early_stopping=True`.
@@ -42,7 +42,7 @@ O projeto avalia cinco famílias algorítmicas de aprendizado de máquina superv
 
 A tabela abaixo sintetiza os resultados reais obtidos no conjunto de teste independente:
 
-| Posição | Modelo | Acurácia (%) | Precisão Macro (%) | Recall Macro (%) | F1-Score Macro (%) | Tempo Treino (s) | Latência Média (ms/img) |
+| Posição | Modelo | Acurácia (%) | Precisão ponderada (%) | Recall ponderado (%) | F1-Score ponderado (%) | Tempo Treino (s) | Latência Média (ms/img) |
 | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | 🥇 | **Rede Neural Keras (CNN)** | **98.97%** | **98.98%** | **98.97%** | **98.97%** | 94.25 s | 0.124 ms |
 | 🥈 | **Rede Neural MLP** | **97.47%** | **97.47%** | **97.47%** | **97.47%** | 24.64 s | **0.004 ms** ⚡ |
@@ -66,7 +66,7 @@ A análise das matrizes de confusão revela que a grande maioria das amostras si
 
 ---
 
-## 4. Garantia Metodológica de Probabilidades
+## 4. Interpretação das Saídas
 
-1. **Soma Estrita de 100%:** Em todas as rotas e interfaces, as probabilidades de cada modelo são normalizadas vetorialmente para garantir que $\sum_{c=0}^9 P(c) = 100.0\%$ antes de qualquer arredondamento para exibição visual.
+1. **Normalização:** As saídas são normalizadas para somar aproximadamente 100% na exibição. No SVM, a softmax dos escores não equivale a uma probabilidade calibrada.
 2. **Confiança vs. Acurácia:** Uma predição com 99% de probabilidade indica que a entrada está muito próxima da distribuição estatística aprendida pelo modelo, mas **não garante acurácia absoluta**, especialmente sob ruído ou fora de distribuição (OOD).

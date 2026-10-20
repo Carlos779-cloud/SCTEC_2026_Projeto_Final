@@ -30,4 +30,6 @@ ehthumbs.db
 .idea/
 *.swp
 *.swo
-.Rproj.user
+
+# Ambiente virtual temporario usado para validar a instalação
+teste/

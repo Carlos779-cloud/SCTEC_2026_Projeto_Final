@@ -1,8 +1,12 @@
 # Classificação de Dígitos Manuscritos com Machine Learning
 
-**Projeto Final — SCTEC 2026**  
-**Autor:** Carlos João Reinert  
-**Orientação e Engenharia de Software:** SCTEC  
+**Projeto Final — SCTEC 2026**
+
+**Entrega Prevista: 03/11/2026**
+
+**Autor:** Carlos João Reinert
+
+**Orientação e Engenharia de Software:** SCTEC
 
 Este projeto desenvolve, avalia e compara múltiplos modelos de Machine Learning e Deep Learning para o reconhecimento de dígitos manuscritos utilizando o consagrado conjunto de dados **MNIST**. A solução reúne um pipeline completo de Visão Computacional (OpenCV), persistência relacional em **SQLite** consultável via **DBeaver**, uma **API REST** de alto desempenho com **FastAPI**, uma aplicação web interativa em **Streamlit** e um **Chatbot local** especializado no próprio projeto.
 
@@ -13,126 +17,130 @@ Este projeto desenvolve, avalia e compara múltiplos modelos de Machine Learning
 - **Modelos de Ponta a Ponta:** Comparação rigorosa de 5 algoritmos supervisionados:
   1. **Random Forest** (Scikit-Learn — 100 árvores)
   2. **K-Nearest Neighbors (KNN)** (Scikit-Learn — $k=3$, ponderação por distância)
-  3. **Support Vector Machine (SVM RBF)** (Scikit-Learn — $C=5.0$, calibração probabilística via Softmax)
+  3. **Support Vector Machine (SVM RBF)** (Scikit-Learn — $C=5.0$, softmax heurística sobre escores; saída não calibrada)
   4. **Rede Neural MLP** (Scikit-Learn — camadas $128, 64$, ativação ReLU, Adam)
   5. **Rede Neural Convolucional (Keras CNN)** (TensorFlow/Keras — 2 blocos Conv2D + MaxPool + Dropout)
 - **Correção Conceitual Rigorosa:** A seleção numérica de um dígito ($0$ a $9$) não realiza inferência sobre o texto digitado; ela busca uma **imagem real de teste MNIST dessa classe no SQLite** e calcula as probabilidades reais sobre a matriz $28 \times 28$.
-- **Probabilidades Calibradas:** Todos os modelos retornam probabilidades percentuais para as classes $0$ a $9$ que somam estritamente $100\%$, diferenciando claramente confiança matemática de acurácia.
+- **Saídas dos classificadores:** Os modelos retornam valores normalizados para as classes $0$ a $9$. No SVM, a softmax dos escores não é uma probabilidade calibrada; confiança não equivale a acurácia.
 - **Visão Computacional OpenCV:** Pré-processamento adaptativo de imagens desenhadas no Paint (detecção de fundo, binarização Otsu, enquadramento $20 \times 20$ e alinhamento por Centro de Massa na tela $28 \times 28$).
-- **Open-Set Recognition:** Rejeição sob incerteza com limiar de confiança $\ge 50\%$ para atribuir *"Não encontrado"* quando exposto a classes desconhecidas.
+- **Experimento de rejeição (Open-Set):** na avaliação de robustez, um Random Forest treinado sem algumas classes rejeita previsões com confiança abaixo de 50%. Esse mecanismo experimental não está integrado às predições normais da API ou do Streamlit.
 - **Banco de Dados SQLite & DBeaver:** Persistência compacta de imagens em campo binário `image_blob` de 784 bytes uint8 e tabela de demonstração administrativa `registros_demo` (dados sintéticos determinísticos com os campos solicitados *"rua, A, B, setor"*).
-- **Chatbot Local Privado:** Assistente em linguagem natural que responde dúvidas técnicas sem envio de dados ou dependência de chaves de API externas.
+- **Analise por setor:** a pagina Dados e banco do Streamlit mostra as medias de vendas (Valor A) e frete (Valor B), calculadas a partir de dados sinteticos de `registros_demo`.
+- **Chatbot local:** responde duvidas tecnicas com base na documentacao do projeto.
 
 ---
 
-## 📁 Estrutura do Repositório
+## Estrutura do Repositório
 
 ```text
 SCTEC_2026_Projeto_final/
-│
-├── api/                                # Camada de Serviços REST FastAPI
-│   ├── __init__.py
-│   ├── app.py                         # Endpoints REST (/health, /models, /metrics, /predict, /samples)
-│   └── schemas.py                     # Contratos de validação de dados Pydantic
-│
-├── chatbot/                            # Motor do Assistente Inteligente Local
-│   ├── __init__.py
-│   └── bot.py                         # Base de conhecimento e correspondência semântica
-│
-├── data/                               # Persistência Relacional e Scripts SQL
-│   ├── mnist.db                       # Banco de dados SQLite estruturado
-│   └── queries_dbeaver.sql            # Consultas de exemplo e guia para o DBeaver
-│
-├── docs/                               # Documentação Oficial Organizada por Fases
-│   ├── etapas/
-│   │   ├── 00_auditoria.md            # Fase 0: Inventário e diagnóstico
-│   │   ├── 01_escopo_arquitetura.md   # Fase 1: Arquitetura e fluxos Mermaid
-│   │   ├── 02_dados_banco.md          # Fase 2: Rastreabilidade MNIST e SQLite
-│   │   ├── 03_modelos_avaliacao.md    # Fase 3: Modelagem e probabilidades
-│   │   ├── 04_api_sqlite.md           # Fase 4: Endpoints FastAPI e persistência
-│   │   ├── 05_streamlit_chatbot.md    # Fase 5: Interface Streamlit e Chatbot
-│   │   └── 06_testes_entrega.md       # Fase 6: Suíte de testes e validações
-│   └── graficos/                      # Figuras e gráficos reais gerados programaticamente
-│
-├── imagem/                             # Imagens desenhadas no Paint para testes
-│   ├── Imagem 1.png a Imagem 12.png
-│
-├── models/                             # Modelos treinados e persistidos em disco
-│   ├── random_forest.pkl
-│   ├── knn.pkl
-│   ├── svm.pkl
-│   ├── mlp.pkl
-│   └── keras_cnn.keras
-│
-├── outputs/                            # Gráficos consolidados do pipeline
-├── scripts/                            # Scripts utilitários de suporte
-│   └── popular_banco.py               # População do banco SQLite com imagens reais e demo
-│
-├── src/                                # Módulos centrais de lógica e ML
-│   ├── __init__.py
-│   ├── database.py                    # Gerenciador de conexão e queries SQLite
-│   ├── inference.py                   # Motor unificado de inferência e calibração
-│   ├── eda.py                         # Carregamento e análise exploratória
-│   ├── preprocessing.py               # Normalização e divisão estratificada
-│   ├── models.py                      # Definição e treinamento dos modelos
-│   ├── evaluation.py                  # Métricas e matrizes de confusão
-│   └── robustness.py                  # Robustez OpenCV e Open-Set Recognition
-│
-├── tests/                              # Suíte completa de testes automatizados
-│   ├── test_preprocessing.py
-│   ├── test_database.py
-│   ├── test_models.py
-│   ├── test_api.py
-│   └── test_chatbot.py
-│
-├── app_streamlit.py                    # Aplicação Web Interativa Streamlit
-├── main.py                            # Pipeline completo (Fases 1 a 5)
-├── requirements.txt                   # Dependências do projeto
-└── README.md                          # Este documento consolidado
+|-- api/
+|   |-- app.py
+|   `-- schemas.py
+|-- chatbot/
+|   `-- bot.py
+|-- data/
+|   |-- mnist.db
+|   `-- queries_dbeaver.sql
+|-- docs/
+|   |-- etapas/              # Documentação das fases 0 a 6
+|   `-- graficos/            # Gráficos documentados
+|-- imagem/                  # Imagens de entrada para análise de robustez
+|-- models/
+|   `-- .gitkeep             # Modelos treinados ficam fora do Git
+|-- outputs/                 # Gráficos e relatórios gerados pelo pipeline
+|-- scripts/
+|   `-- popular_banco.py
+|-- src/                     # EDA, preparação, modelos, inferência e SQLite
+|-- tests/                   # Testes unittest
+|-- app_streamlit.py
+|-- main.py                  # Pipeline de treinamento e avaliação
+|-- requirements.txt
+`-- README.md
 ```
 
----
+Os arquivos dos modelos (`*.pkl` e `*.keras`) são ignorados pelo Git por serem artefatos gerados. Para usar a API ou o Streamlit em um clone novo, primeiro treine os modelos com `python main.py`.
 
 ## 🚀 Como Instalar e Executar (Passo a Passo)
 
 ### 1. Pré-requisitos
 - **Python 3.10 a 3.12** instalado.
 - Gerenciador de pacotes `pip`.
+- Ambiente virtual recomendado (`venv`).
+- As dependências e suas faixas/versões estão declaradas em `requirements.txt`.
 
 ### 2. Instalação das Dependências
 No terminal do projeto:
 ```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
 ### 3. Inicializar e Popular o Banco de Dados SQLite
-Gera o arquivo `data/mnist.db` com 5.000 amostras MNIST reais (BLOBs de 784 bytes) e a tabela demonstrativa `registros_demo`:
+Em um banco vazio, a configuracao padrao insere ate 5.000 imagens MNIST (2.000 de teste e 3.000 de treino), alem dos registros de demonstracao. A rotina acrescenta imagens e nao remove registros existentes; evite executa-la repetidamente para nao duplicar as imagens. O banco incluido contem 15.000 imagens (9.000 treino e 6.000 teste) e 120 registros sinteticos de demonstracao.
 ```powershell
 python scripts/popular_banco.py
 ```
 
-### 4. Executar os Testes Automatizados
-Valida 100% dos componentes (pré-processamento, SQLite, modelos, API e chatbot):
+### 4. Preparar os modelos
+Os arquivos serializados ficam em `models/` e são ignorados pelo Git por causa do tamanho. Execute o pipeline antes dos testes e dos serviços. Se os modelos não estiverem disponíveis, o pipeline os treina e salva; os dados são obtidos via OpenML ou do cache local:
 ```powershell
-python -m unittest discover tests
+python main.py
 ```
-> *Resultado esperado:* 22 testes executados e aprovados com sucesso (`OK`).
 
-### 5. Iniciar os Serviços (Terminais Separados)
+
+### 5. Executar os Testes Automatizados
+Executa a suíte automatizada de pré-processamento, SQLite, modelos, API e chatbot:
+```powershell
+python -m unittest discover -s tests -v
+```
+> A documentacao da Fase 6 registra 25 testes aprovados em uma execucao anterior. O resultado pode variar apos alteracoes no projeto.
+
+### 6. Iniciar os Serviços (Terminais Separados)
 
 #### Terminal 1 — API REST FastAPI:
 ```powershell
-uvicorn api.app:app --host 127.0.0.1 --port 8000 --reload
+python -m uvicorn api.app:app --host 127.0.0.1 --port 8000 --reload
 ```
 - **Documentação Interativa Swagger:** [`http://localhost:8000/docs`](http://localhost:8000/docs)
 - **Documentação ReDoc:** [`http://localhost:8000/redoc`](http://localhost:8000/redoc)
 - **Health Check:** [`http://localhost:8000/health`](http://localhost:8000/health)
 
+Exemplo de predição: a entrada é um objeto JSON com `pixels`, uma lista achatada de 784 números em ordem por linha. A API aceita a escala `[0, 1]` ou `[0, 255]`; imagens em arquivo, Base64 ou matriz 28×28 não são aceitas nesse endpoint.
+
+```powershell
+$body = @{ pixels = @(0) * 784 } | ConvertTo-Json -Compress
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/predict" -ContentType "application/json" -Body $body
+```
+
+A resposta contém `predicoes` (classe, confiança, probabilidades e latência por modelo), `consenso` e `aviso_metodologico`. Os números dependem da imagem enviada. A saída do SVM é uma softmax heurística dos escores e não deve ser interpretada como probabilidade calibrada.
+
+Rotas disponíveis: `GET /health`, `GET /models`, `GET /metrics`, `GET /samples/{digit}` e `POST /predict`. A entrada inválida retorna HTTP 422; se os modelos não forem carregados, `/predict` retorna HTTP 503. A documentação interativa também está em [`/docs`](http://localhost:8000/docs), e o esquema OpenAPI em [`/openapi.json`](http://localhost:8000/openapi.json).
+
+Trecho de uma resposta real obtida ao enviar a amostra de teste do dígito 7 do SQLite (a latência varia entre execuções):
+```json
+{
+  "predicoes": {
+    "Random Forest": {
+      "classe_prevista": 7,
+      "confianca_max_pct": 99.0,
+      "probabilidades_pct": {"0": 0.0, "1": 0.0, "2": 0.0, "3": 0.0, "4": 1.0, "5": 0.0, "6": 0.0, "7": 99.0, "8": 0.0, "9": 0.0},
+      "latencia_ms": 48.34,
+      "tipo_saida": "Saída probabilística do modelo"
+    }
+  },
+  "consenso": {"digito_previsto": 7, "votos": "5/5", "concordancia_pct": 100.0},
+  "aviso_metodologico": "A confiança não garante acerto. No SVM, a softmax dos escores de decisão não é uma calibração probabilística formal."
+}
+```
+
 #### Terminal 2 — Interface Web Streamlit:
 ```powershell
-streamlit run app_streamlit.py
+python -m streamlit run app_streamlit.py
 ```
-- **URL Local:** [`http://localhost:8501`](http://localhost:8501)
+- **URL Local:** [`http://localhost:8501`](http://localhost:8501). Abra **Dados e banco** para consultar o grafico de medias por setor, feito com dados sinteticos.
 
 ---
 
@@ -159,7 +167,7 @@ O banco relacional está em **`data/mnist.db`**.
 
 ## 🏆 Tabela Comparativa Oficial de Desempenho (10.500 imagens de teste)
 
-| Posição | Modelo | Acurácia (%) | Precisão Macro (%) | Recall Macro (%) | F1-Score Macro (%) | Tempo Treino (s) | Latência Média (ms/img) |
+| Posição | Modelo | Acurácia (%) | Precisão ponderada (%) | Recall ponderado (%) | F1-Score ponderado (%) | Tempo Treino (s) | Latência Média (ms/img) |
 | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | 🥇 | **Rede Neural Keras (CNN)** | **98.97%** | **98.98%** | **98.97%** | **98.97%** | 94.25 s | 0.124 ms |
 | 🥈 | **Rede Neural MLP** | **97.47%** | **97.47%** | **97.47%** | **97.47%** | 24.64 s | **0.004 ms** ⚡ |
@@ -168,6 +176,17 @@ O banco relacional está em **`data/mnist.db`**.
 | 5 | **Random Forest** | **96.63%** | **96.63%** | **96.63%** | **96.63%** | 13.68 s | 0.031 ms |
 
 ---
+
+## Limitações conhecidas
+
+- A API recebe somente 784 pixels em JSON; não recebe diretamente arquivos ou imagens coloridas.
+- A softmax aplicada aos escores do SVM não é calibração probabilística formal.
+- O banco pode acumular imagens duplicadas se `scripts/popular_banco.py` for executado mais de uma vez sobre o mesmo arquivo.
+- O pipeline depende de obter o conjunto `mnist_784` via OpenML ou do cache local.
+
+## Apresentação em vídeo
+
+O link do vídeo no Google Drive ainda precisa ser incluído antes da entrega. Configure o compartilhamento para permitir leitura a qualquer pessoa com o link.
 
 ## 📜 Rastreabilidade, Fonte e Licença do MNIST
 
@@ -179,8 +198,10 @@ O banco relacional está em **`data/mnist.db`**.
 
 ## 🎓 Conclusão e Apresentação Acadêmica
 
-O projeto atende integralmente a todas as exigências do **MEGA PROMPT SCTEC**, oferecendo:
-1. Reprodutibilidade total com sementes fixas e modelos auditados.
+As métricas de precisão, recall e F1 deste README usam média ponderada (`average="weighted"`), conforme `src/evaluation.py`. Os valores são resultados registrados de uma execução anterior; tempos e latência variam entre computadores.
+
+O projeto reúne os seguintes componentes técnicos:
+1. Pipeline reproduzível com sementes fixas e possibilidade de recriar os modelos.
 2. Camada corporativa com FastAPI documentada via Swagger e Pydantic.
 3. Persistência relacional limpa com SQLite e DBeaver.
 4. Interface Streamlit didática e acessível com Chatbot local.

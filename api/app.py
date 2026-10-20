@@ -10,9 +10,10 @@ Fornece:
 
 import os
 import sys
-from fastapi import FastAPI, HTTPException, Path
+import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
 
 # Garante importações a partir da raiz do projeto
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,12 +31,33 @@ from api.schemas import (
 from src.inference import MotorInferencia
 from src.database import verificar_integridade_banco, obter_exemplo_por_digito
 
+logger = logging.getLogger(__name__)
+
+
+def _motor_da_requisicao(request: Request = None):
+    """Obtém o motor do lifespan; mantém compatibilidade com chamadas diretas locais."""
+    if request is None:
+        return MotorInferencia.get_instancia()
+    return getattr(request.app.state, "motor", None)
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Carrega os modelos uma vez e mantém o serviço inicializável em caso de falha."""
+    application.state.motor = None
+    try:
+        application.state.motor = MotorInferencia.get_instancia()
+    except Exception:
+        logger.exception("Falha ao carregar os modelos durante a inicialização")
+    yield
+
 app = FastAPI(
     title="API SCTEC MNIST — Classificação de Dígitos Manuscritos",
     description="API REST de alta performance para inferência em modelos de Machine Learning e Deep Learning sobre o dataset MNIST.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Habilita CORS para consumo via frontend web ou Streamlit
@@ -48,33 +70,40 @@ app.add_middleware(
 )
 
 # Inicializa singleton do motor de inferência
-motor = MotorInferencia.get_instancia()
 
 
 @app.get("/health", response_model=HealthResponse, summary="Verificação de Saúde e Conectividade")
-def health_check():
+def health_check(request: Request = None):
     """Retorna o estado do serviço, integridade da base SQLite e modelos carregados em memória."""
     try:
         status_db = verificar_integridade_banco()
-    except Exception as e:
-        status_db = {"status": "erro", "detalhe": str(e)}
+    except Exception:
+        logger.exception("Falha ao verificar a integridade do SQLite")
+        status_db = {"status": "erro"}
 
-    modelos_ativos = list(motor.modelos.keys())
+    motor = _motor_da_requisicao(request)
+    modelos_ativos = list(motor.modelos.keys()) if motor else []
+    modelo_disponivel = bool(modelos_ativos)
+    banco_disponivel = status_db.get("integridade") == "ok"
+    status_db_publico = {chave: valor for chave, valor in status_db.items() if chave != "db_path"}
 
     return {
-        "status": "online",
+        "status": "online" if modelo_disponivel and banco_disponivel else "degraded",
         "versao": "1.0.0",
-        "banco_sqlite": status_db,
+        "banco_sqlite": status_db_publico,
         "modelos_carregados": modelos_ativos,
         "total_modelos": len(modelos_ativos),
+        "modelo_disponivel": modelo_disponivel,
     }
 
 
 @app.get("/models", response_model=ModelsResponse, summary="Lista de Modelos Disponíveis")
-def list_models():
+def list_models(request: Request = None):
     """Retorna a relação dos 5 modelos de classificação suportados com seus tipos e descrições."""
     lista = []
-    for nome, meta in motor.metricas.items():
+    motor = _motor_da_requisicao(request)
+    metricas = motor.metricas if motor else MotorInferencia._carregar_metricas_estaticas()
+    for nome, meta in metricas.items():
         tipo_map = {
             "Random Forest": "Ensemble (Árvores)",
             "KNN": "Baseado em Instâncias",
@@ -96,10 +125,12 @@ def list_models():
 
 
 @app.get("/metrics", response_model=MetricsResponse, summary="Métricas de Avaliação Preditiva")
-def get_metrics():
-    """Retorna métricas consolidadas (acurácia, precisão, recall, F1-macro e latência) calculadas no conjunto de teste."""
+def get_metrics(request: Request = None):
+    """Retorna métricas consolidadas (acurácia, precisão, recall, F1 ponderado e latência) calculadas no conjunto de teste."""
     metricas_formatadas = {}
-    for nome, d in motor.metricas.items():
+    motor = _motor_da_requisicao(request)
+    metricas = motor.metricas if motor else MotorInferencia._carregar_metricas_estaticas()
+    for nome, d in metricas.items():
         metricas_formatadas[nome] = MetricDetail(**d)
 
     return {
@@ -109,19 +140,23 @@ def get_metrics():
 
 
 @app.post("/predict", response_model=PredictResponse, summary="Classificar Imagem de Dígito")
-def predict_digit(request: PredictRequest):
-    """Recebe um vetor com exatamente 784 pixels e retorna a predição de todos os 5 modelos.
+def predict_digit(payload: PredictRequest, request: Request = None):
+    """Recebe 784 pixels achatados e retorna previsões dos modelos carregados.
     
     Cada modelo fornece sua distribuição de probabilidade percentual para as 10 classes (0 a 9)
-    com soma interna garantida de 100%.
+    normalizadas para somar aproximadamente 100% após o arredondamento.
     """
+    motor = _motor_da_requisicao(request)
+    if motor is None:
+        raise HTTPException(status_code=503, detail="Modelos de inferência indisponíveis.")
     try:
-        resultado = motor.prever(request.pixels)
+        resultado = motor.prever(payload.pixels)
         return resultado
     except ValueError as ve:
         raise HTTPException(status_code=422, detail=str(ve))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro interno de inferência: {str(e)}")
+    except Exception:
+        logger.exception("Falha inesperada durante a inferência")
+        raise HTTPException(status_code=500, detail="Falha interna durante a inferência.")
 
 
 @app.get("/samples/{digit}", response_model=SampleResponse, summary="Obter Amostra Real do SQLite por Dígito")

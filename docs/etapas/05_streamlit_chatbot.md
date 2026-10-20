@@ -8,51 +8,44 @@
 
 ## 1. Visão Geral da Interface Visual
 
-A aplicação desenvolvida em **Streamlit** (`app_streamlit.py`) oferece uma experiência interativa, didática e em português do Brasil, estruturada em oito módulos funcionais:
-1. **Visão Geral:** Metadados do projeto, métricas sumarizadas e integridade dos serviços.
-2. **Comparação dos Modelos:** Gráficos de barra com valores numéricos exatos de acurácia, F1-macro e latência em milissegundos.
-3. **Teste por Dígito:** Respeito à correção conceitual — busca de uma imagem real de teste no SQLite/dataset e inferência sobre ela.
-4. **Teste por Desenho / Upload:** Pipeline OpenCV integrado com binarização adaptativa Otsu, enquadramento $20 \times 20$ e centralização por Centro de Massa na tela $28 \times 28$.
-5. **Gráfico de Probabilidades (%):** Visualização interativa com barras das probabilidades de cada classe ($0$ a $9$) para os 5 modelos somando $100\%$.
-6. **Matriz de Confusão & Classes:** Painel comparativo das matrizes de confusão e erros comuns de caligrafia.
-7. **Dados e Banco SQLite:** Visualizador paginado das tabelas `mnist_images` (com decodificação do BLOB de 784 bytes) e `registros_demo` (dados sintéticos determinísticos).
-8. **Chatbot do Projeto:** Assistente inteligente em linguagem natural com histórico conversacional.
+A aplicação desenvolvida em **Streamlit** (`app_streamlit.py`) oferece uma experiência interativa, didática e em português do Brasil, estruturada em cinco páginas de projeto e sete páginas de documentação de fases:
+1. **Visão Geral:** resumo do projeto, métricas registradas e estado dos serviços.
+2. **Comparação dos Modelos:** compara acurácia, métricas ponderadas e latência registrada.
+3. **Teste por Dígito:** busca uma imagem MNIST real no SQLite e executa a inferência.
+4. **Desenhar ou enviar imagem:** processa a imagem com OpenCV e consulta os modelos.
+5. **Dados e banco:** consulta as tabelas `mnist_images` e `registros_demo`; inclui o gráfico de médias por setor.
 
+As sete fases documentadas estão disponíveis em páginas próprias. O chatbot local fica no painel lateral.
 ---
 
 ## 2. Diagrama de Fluxo da Interface Streamlit (Mermaid)
 
 ```mermaid
 flowchart TD
-    subgraph UI ["Navegação Streamlit (app_streamlit.py)"]
-        N1["Visão Geral"]
-        N2["Comparação dos Modelos"]
-        N3["Teste por Dígito"]
-        N4["Teste por Desenho / Imagem"]
-        N5["Probabilidades (%)"]
-        N6["Matriz de Confusão"]
-        N7["Dados e SQLite"]
-        N8["Chatbot"]
+    subgraph UI ["Navegação Streamlit"]
+        N1["Visão geral"]
+        N2["Comparação dos modelos"]
+        N3["Teste por dígito"]
+        N4["Desenhar ou enviar imagem"]
+        N5["Dados e banco"]
+        DOCS["Sete fases documentadas"]
+        CHAT["Chatbot no painel lateral"]
     end
 
-    subgraph Processamento ["Serviços e Motores"]
+    subgraph Processamento ["Serviços e motores"]
         DB["SQLite (data/mnist.db)"]
         INF["MotorInferencia (src/inference.py)"]
-        CV["Pipeline OpenCV (src/robustness.py)"]
+        CV["Pré-processamento OpenCV"]
         CB["ChatbotLocal (chatbot/bot.py)"]
     end
 
-    N3 -->|Busca imagem real pelo dígito| DB
-    DB -->|Retorna vetor 784| INF
-
-    N4 -->|Recebe imagem Paint / Upload| CV
-    CV -->|Normaliza para 28x28| INF
-
-    N5 -->|Calcula probabilidades 0-9| INF
-    N7 -->|Consultas paginadas LIMIT/OFFSET| DB
-    N8 -->|Pergunta em linguagem natural| CB
-
-    INF -->|Consenso & % de cada modelo| UI
+    N3 -->|Busca imagem real| DB
+    DB -->|Vetor 784| INF
+    N4 -->|Imagem Paint ou upload| CV
+    CV -->|Imagem 28x28| INF
+    N5 -->|Consultas e gráfico por setor| DB
+    CHAT -->|Pergunta| CB
+    INF -->|Predições e consenso| N3
 ```
 
 ---

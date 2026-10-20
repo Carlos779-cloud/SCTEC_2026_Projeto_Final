@@ -37,7 +37,7 @@
    - 5 modelos consolidados cobrindo diferentes paradigmas (baseados em árvores, instâncias, margens, conexões neurais densas e convoluções espaciais).
    - Reutilização inteligente dos artefatos persistidos em disco sem necessidade de re-treinamento a cada execução.
 2. **Avaliação e Métricas:**
-   - Cálculo rigoroso de Acurácia, Precisão, Recall e F1-score (macro e ponderado) em partição independente de teste (10.500 imagens).
+   - Cálculo rigoroso de Acurácia, Precisão, Recall e F1-score com média ponderada em partição independente de teste (10.500 imagens).
 3. **Visão Computacional com OpenCV:**
    - Pipeline robusto para imagens do Paint: detecção automática de cor de fundo (claro, escuro ou cinza), binarização adaptativa de Otsu, corte por contorno com aspect ratio preservado em caixa $20 \times 20$, e centralização por Centro de Massa em tela $28 \times 28$.
 4. **Mecanismo de Rejeição sob Incerteza (Open-Set Recognition):**
