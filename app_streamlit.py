@@ -282,8 +282,35 @@ def renderizar_chatbot() -> None:
             limpar_chat()
             st.rerun()
 
+        perguntas_sugeridas = [
+            "Qual é o objetivo do projeto?",
+            "O que é o MNIST e quais são suas dimensões?",
+            "Quais modelos foram implementados?",
+            "Qual foi o melhor modelo e sua acurácia?",
+            "Qual a diferença entre métricas ponderadas e média simples?",
+            "O que é lifespan na API FastAPI?",
+            "Quais são os endpoints da API?",
+            "Como funciona o banco SQLite e o DBeaver?",
+            "Como executar o projeto?",
+            "Como funciona o teste por desenho?",
+            "Na Fase 5, o que significa 'Não encontrado'?",
+            "Por que o teste por dígito aceita apenas valores de 0 a 9?",
+        ]
+        pergunta_selecionada = st.selectbox(
+            "Escolha uma pergunta frequente",
+            perguntas_sugeridas,
+            key="pergunta_sugerida_chat",
+        )
+        if st.button("Mostrar resposta", icon=":material/arrow_forward:", key="enviar_sugestao_chat"):
+            resposta = carregar_chatbot().responder(pergunta_selecionada)
+            st.session_state["mensagens_chat"].extend([
+                {"role": "user", "content": pergunta_selecionada},
+                {"role": "assistant", "content": resposta},
+            ])
+            st.rerun()
+
         if not st.session_state["mensagens_chat"]:
-            st.caption("Exemplos: quais modelos são usados? Como funciona o banco? O que foi feito na fase 3?")
+            st.caption("Escolha uma pergunta acima ou escreva sua própria dúvida abaixo.")
 
         for mensagem in st.session_state["mensagens_chat"][-8:]:
             with st.chat_message(mensagem["role"]):

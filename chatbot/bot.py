@@ -78,6 +78,19 @@ class ChatbotLocal:
                 ),
             },
             {
+                "intencao": "metricas_ponderadas_simples",
+                "gatilhos": ["diferenca entre metrica ponderada e normal", "ponderada e media simples", "media ponderada", "media macro", "metrica ponderada", "metricas normais"],
+                "resposta": (
+                    "**Métricas ponderadas e média simples:**\n"
+                    "Se por métrica 'normal' você quer dizer a média simples (macro), a diferença é o peso dado a cada classe.\n"
+                    "Para precisão, recall e F1, a média ponderada calcula a métrica de cada classe e dá mais peso às classes que têm mais exemplos. "
+                    "A média simples (também chamada macro) dá o mesmo peso a cada classe, independentemente da quantidade de exemplos. "
+                    "Assim, a ponderada representa melhor o desempenho no conjunto como um todo quando as classes têm tamanhos diferentes; a macro evidencia se o modelo vai mal em alguma classe pequena.\n"
+                    "No MNIST usado neste projeto, as classes são aproximadamente balanceadas, então as duas médias tendem a ficar próximas. "
+                    "A acurácia é uma métrica diferente: é a proporção total de previsões corretas e não é chamada de média ponderada."
+                ),
+            },
+            {
                 "intencao": "api_fastapi",
                 "gatilhos": ["api", "fastapi", "endpoints", "rotas", "docs", "swagger", "post", "get", "predict"],
                 "resposta": (
@@ -89,6 +102,18 @@ class ChatbotLocal:
                     "- `GET /metrics`: Métricas de acurácia, F1 ponderado e latência de cada modelo.\n"
                     "- `POST /predict`: Recebe vetor de 784 pixels e retorna predições dos 5 modelos com probabilidades percentuais (0-9).\n"
                     "- `GET /samples/{digit}`: Retorna uma imagem real do conjunto MNIST persistida no SQLite."
+                ),
+            },
+            {
+                "intencao": "lifespan_fastapi",
+                "gatilhos": ["lifespan", "ciclo de vida da api", "inicializacao da api", "carregamento dos modelos"],
+                "resposta": (
+                    "**O que é `lifespan` na API FastAPI?**\n"
+                    "`lifespan` é uma função que organiza o ciclo de vida do serviço: o que acontece quando a API inicia e quando ela encerra. "
+                    "Neste projeto, ela tenta carregar o motor de inferência e os modelos uma vez na inicialização e guarda o motor em `app.state.motor`, "
+                    "para que as rotas possam reutilizá-lo. Se o carregamento falhar, a API registra o erro e continua inicializável; "
+                    "as rotas que dependem dos modelos podem então informar que eles não estão disponíveis.\n"
+                    "Em termos simples: evita recarregar os modelos a cada requisição e centraliza a preparação do serviço."
                 ),
             },
             {
@@ -129,11 +154,22 @@ class ChatbotLocal:
                 ),
             },
             {
+                "intencao": "faixa_digitos_mnist",
+                "gatilhos": ["digito 12", "numero 12", "aceita apenas valores de 0 a 9", "digito fora da faixa", "por que so de 0 a 9"],
+                "resposta": (
+                    "**Por que o teste aceita somente dígitos de 0 a 9?**\n"
+                    "O MNIST tem dez classes: os algarismos de 0 a 9. Na página 'Testar por dígito', o valor escolhido serve para buscar no banco uma imagem real de teste daquela classe; "
+                    "não é uma imagem que o modelo vai interpretar. Por isso, `12` não é uma classe válida e o campo limita a entrada a 0–9.\n"
+                    "'Não encontrado' tem outro significado: na Fase 5, é a rejeição experimental de uma imagem quando um modelo treinado sem certas classes não tem confiança suficiente. "
+                    "Não é o rótulo adequado para um número fora da faixa."
+                ),
+            },
+            {
                 "intencao": "robustez_paint",
                 "gatilhos": ["paint", "opencv", "classes ausentes", "rejeicao", "nao encontrado", "open set", "externa"],
                 "resposta": (
                     "**Robustez e Imagens do Paint:**\n"
-                    "- **Experimento Open-Set:** a etapa de robustez testa rejeição abaixo de 50% com um Random Forest treinado sem algumas classes. Esse mecanismo não faz parte das predições normais da API ou do Streamlit.\n"
+                    "- **'Não encontrado' na Fase 5:** é um rótulo de rejeição do experimento Open-Set. O Random Forest é treinado sem algumas classes (neste projeto, 3 e 8); se a maior probabilidade ficar abaixo de 50%, a amostra é rejeitada em vez de forçar uma previsão entre as classes conhecidas. Isso ajuda a avaliar se o sistema reconhece quando recebe uma classe que não aprendeu. É um teste de robustez, não uma opção disponível no campo 'Teste por dígito' do Streamlit.\n"
                     "- **Pipeline OpenCV:** As imagens feitas no Paint são normalizadas por: detecção de fundo, binarização Otsu, enquadramento proporcional 20×20 e centralização por Centro de Massa na tela 28×28."
                 ),
             },
