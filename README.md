@@ -30,6 +30,23 @@ Este projeto desenvolve, avalia e compara múltiplos modelos de Machine Learning
 
 ---
 
+## Clonar o repositório
+
+Copie e execute este comando no terminal:
+
+```bash
+git clone https://github.com/Carlos779-cloud/SCTEC_2026_Projeto_Final.git
+cd SCTEC_2026_Projeto_Final
+```
+
+## Link do vídeo
+
+Assista o Vídeo do Projeto
+
+[https://1drv.ms/v/c/0c1a15f59618ec33/IQCCSuG7xNjRQrAgrQUiaeLfAfs49hpxliSMQrAmJjbCEss?e=kwtNpn]
+
+---
+
 ## Estrutura do Repositório
 
 ```text
@@ -184,16 +201,13 @@ O banco relacional está em **`data/mnist.db`**.
 - O banco pode acumular imagens duplicadas se `scripts/popular_banco.py` for executado mais de uma vez sobre o mesmo arquivo.
 - O pipeline depende de obter o conjunto `mnist_784` via OpenML ou do cache local.
 
-## Apresentação em vídeo
-
-O link do vídeo no Google Drive ainda precisa ser incluído antes da entrega. Configure o compartilhamento para permitir leitura a qualquer pessoa com o link.
+---
 
 ## 📜 Rastreabilidade, Fonte e Licença do MNIST
 
 - **Fonte Oficial:** Repositório OpenML (`mnist_784`, ID: 554), derivado do trabalho de Yann LeCun, Corinna Cortes e Christopher J.C. Burges.
 - **Licença:** **Creative Commons Attribution-Share Alike 3.0 (CC BY-SA 3.0)**.
 - **Diferenciação:** Não confundir com o dataset de brinquedo `digits` ($8 \times 8$) do scikit-learn.
-
 ---
 
 ## 🎓 Conclusão e Apresentação Acadêmica
