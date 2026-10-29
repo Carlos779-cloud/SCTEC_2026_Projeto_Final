@@ -43,7 +43,7 @@ cd SCTEC_2026_Projeto_Final
 
 Assista o Vídeo do Projeto
 
-[https://1drv.ms/v/c/0c1a15f59618ec33/IQCCSuG7xNjRQrAgrQUiaeLfAfs49hpxliSMQrAmJjbCEss?e=kwtNpn]
+(https://youtu.be/r5gGV-pp_1U?vq=hd720)
 
 ---
 
