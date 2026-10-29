@@ -41,7 +41,7 @@ cd SCTEC_2026_Projeto_Final
 
 ## Link do vídeo
 
-Assista o Vídeo do Projeto
+[Assistir Vídeo Demo Coloquei um código no link para ele tentar abrir diretamente em alta definição (720p). Se por acaso a imagem ainda parecer um pouco borrada ou desfocada no seu início, basta clicar no ícone da Engrenagem (Configurações) no próprio player do vídeo, ir em Qualidade e selecionar 720p ou 1080p. Muito obrigado!]
 
 (https://youtu.be/r5gGV-pp_1U?vq=hd720)
 
